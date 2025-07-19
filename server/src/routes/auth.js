@@ -72,7 +72,9 @@ router.post('/register', [
       lastName
     });
 
+    console.log('Before save - Password:', password);
     await user.save();
+    console.log('After save - Password hash:', user.password.substring(0, 20) + '...');
 
     // Generate token
     const token = generateToken(user._id);
@@ -119,14 +121,19 @@ router.post('/login', [
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
+      console.log('User not found for email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    console.log('User found:', user.email, 'Password hash:', user.password.substring(0, 20) + '...');
+
     // Check password
     const isMatch = await user.comparePassword(password);
+    console.log('Password match result:', isMatch);
+    
     if (!isMatch) {
       return res.status(401).json({
         success: false,
