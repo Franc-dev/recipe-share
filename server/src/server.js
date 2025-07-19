@@ -36,19 +36,41 @@ const io = socketIo(server, {
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// Middleware.
-app.use(cors({
-  origin: true, // Allow all origins for testing
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://sawe-recipe-share.vercel.app',
+      'https://recipe-share-app.vercel.app'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+app.use(cors(corsOptions));
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.path} - Origin: ${req.headers.origin} - User-Agent: ${req.headers['user-agent']}`);
   next();
 });
+
+// Handle CORS preflight requests
+app.options('*', cors());
 
 app.use(morgan('combined'));
 // app.use(limiter); // Temporarily disable rate limiting
@@ -118,6 +140,19 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     origin: req.headers.origin,
     userAgent: req.headers['user-agent']
+  });
+});
+
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://sawe-recipe-share.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.json({ 
+    status: 'OK', 
+    message: 'CORS test successful!',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
   });
 });
 
