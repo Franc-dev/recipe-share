@@ -76,7 +76,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-sh
   useUnifiedTopology: true,
   serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
   socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-  bufferCommands: false, // Disable mongoose buffering
+  bufferCommands: true, // Re-enable buffering to allow queries before connection
   bufferMaxEntries: 0, // Disable mongoose buffering
   maxPoolSize: 10, // Maintain up to 10 socket connections
   serverApi: {
@@ -148,22 +148,28 @@ app.get('/api/public/recipes', async (req, res) => {
   }
 });
 
-// Test database endpoint
-app.get('/api/test-db', async (req, res) => {
+// Simple database test endpoint
+app.get('/api/test-db-simple', async (req, res) => {
   try {
+    const Recipe = require('./models/Recipe');
     const User = require('./models/User');
+    
+    const recipeCount = await Recipe.countDocuments();
     const userCount = await User.countDocuments();
-    res.json({ 
-      status: 'OK', 
-      message: 'Database is working',
+    
+    res.json({
+      success: true,
+      message: 'Database connection working',
+      recipeCount,
       userCount,
-      database: mongoose.connection.name
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR', 
+    res.status(500).json({
+      success: false,
       message: 'Database test failed',
-      error: error.message 
+      error: error.message,
+      stack: error.stack
     });
   }
 });
