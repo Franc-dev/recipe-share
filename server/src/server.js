@@ -18,7 +18,24 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// Simple startup test - this should work even if nothing else does
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is running!',
+    timestamp: new Date().toISOString()
+  });
+});
 
+// Health check that works without database
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is healthy!',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Allow ALL origins - no CORS restrictions
 app.use(cors({
@@ -74,7 +91,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
 .catch(err => {
   console.error('❌ MongoDB connection error:', err);
-  process.exit(1); // Exit if database connection fails
+  console.log('⚠️ Server will continue without database connection');
+  // Don't exit - let the server run without database
 });
 
 // Handle MongoDB connection events
