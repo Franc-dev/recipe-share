@@ -72,9 +72,32 @@ router.post('/register', [
       lastName
     });
 
-    console.log('Before save - Password:', password);
-    await user.save();
-    console.log('After save - Password hash:', user.password.substring(0, 20) + '...');
+    console.log('=== REGISTRATION DEBUG ===');
+    console.log('User data before save:', {
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      password: password
+    });
+
+    try {
+      await user.save();
+      console.log('✅ User saved successfully!');
+      console.log('User ID:', user._id);
+      console.log('Password hash:', user.password.substring(0, 20) + '...');
+      
+      // Verify user was saved by querying the database
+      const savedUser = await User.findById(user._id);
+      if (savedUser) {
+        console.log('✅ User verified in database:', savedUser.email);
+      } else {
+        console.log('❌ User not found in database after save!');
+      }
+    } catch (saveError) {
+      console.error('❌ Error saving user:', saveError);
+      throw saveError;
+    }
 
     // Generate token
     const token = generateToken(user._id);

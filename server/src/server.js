@@ -47,12 +47,21 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Database connection
+console.log('🔗 Connecting to MongoDB...');
+console.log('MongoDB URI:', process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-share');
+
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-share', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+.then(() => {
+  console.log('✅ Connected to MongoDB');
+  console.log('Database name:', mongoose.connection.name);
+  console.log('Database host:', mongoose.connection.host);
+})
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -62,6 +71,26 @@ app.use('/api/users', userRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Recipe Share API is running' });
+});
+
+// Test database endpoint
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const User = require('./models/User');
+    const userCount = await User.countDocuments();
+    res.json({ 
+      status: 'OK', 
+      message: 'Database is working',
+      userCount,
+      database: mongoose.connection.name
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: 'Database test failed',
+      error: error.message 
+    });
+  }
 });
 
 // Socket.io connection handling
