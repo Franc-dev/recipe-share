@@ -77,7 +77,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-sh
   serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
   socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
   bufferCommands: true, // Re-enable buffering to allow queries before connection
-  bufferMaxEntries: 0, // Disable mongoose buffering
   maxPoolSize: 10, // Maintain up to 10 socket connections
   serverApi: {
     version: '1',
