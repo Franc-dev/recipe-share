@@ -12,9 +12,9 @@ const router = express.Router();
 // @desc    Get all recipes with filtering and search
 // @access  Public
 router.get('/', [
-  query('search').optional().isString(),
+  query('search').optional().isString().trim(),
   query('category').optional().isIn(['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread', 'Other']),
-  query('cuisine').optional().isString(),
+  query('cuisine').optional().isString().trim(),
   query('difficulty').optional().isIn(['Easy', 'Medium', 'Hard']),
   query('maxTime').optional().isInt({ min: 1 }),
   query('minRating').optional().isFloat({ min: 0, max: 5 }),
@@ -25,6 +25,8 @@ router.get('/', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Request query:', req.query);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -47,20 +49,20 @@ router.get('/', [
     // Build query
     const query = { isPublic: true };
     
-    if (category) query.category = category;
-    if (cuisine) query.cuisine = { $regex: cuisine, $options: 'i' };
-    if (difficulty) query.difficulty = difficulty;
-    if (search) {
+    if (category && category.trim()) query.category = category;
+    if (cuisine && cuisine.trim()) query.cuisine = { $regex: cuisine, $options: 'i' };
+    if (difficulty && difficulty.trim()) query.difficulty = difficulty;
+    if (search && search.trim()) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { 'ingredients.name': { $regex: search, $options: 'i' } }
       ];
     }
-    if (maxTime) {
+    if (maxTime && parseInt(maxTime) > 0) {
       query.$expr = { $lte: [{ $add: ['$prepTime', '$cookTime'] }, parseInt(maxTime)] };
     }
-    if (minRating) {
+    if (minRating && parseFloat(minRating) > 0) {
       query.averageRating = { $gte: parseFloat(minRating) };
     }
 
@@ -160,6 +162,8 @@ router.get('/search', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Request query:', req.query);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -339,6 +343,8 @@ router.post('/', auth, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Request body:', req.body);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -416,6 +422,8 @@ router.put('/:id', auth, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Request body:', req.body);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -517,6 +525,8 @@ router.post('/:id/reviews', auth, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Request body:', req.body);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',

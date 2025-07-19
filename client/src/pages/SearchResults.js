@@ -25,11 +25,21 @@ const SearchResults = () => {
   const { data: searchResults, isLoading, error } = useQuery(
     ['search', query, filters, page],
     async () => {
-      const params = new URLSearchParams({
-        search: query,
-        page: page.toString(),
-        limit: limit.toString(),
-        ...filters
+      const params = new URLSearchParams();
+      
+      // Only add search if it's not empty
+      if (query && query.trim()) {
+        params.set('search', query);
+      }
+      
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
+      
+      // Only add non-empty filter values
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          params.set(key, value);
+        }
       });
       
       const response = await api.get(`/api/recipes?${params}`);
