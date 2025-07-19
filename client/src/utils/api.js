@@ -3,7 +3,7 @@ import axios from 'axios';
 // Get API base URL based on environment
 const getApiUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
+    return process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL || 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
   }
   return 'http://localhost:5000';
 };
