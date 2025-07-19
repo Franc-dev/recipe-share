@@ -20,6 +20,6 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "https://your-backend-url.onrender.com"
+    "REACT_APP_API_URL": "https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev"
   }
 } 
