@@ -24,8 +24,14 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: [
+      'http://localhost:3000',
+      'https://sawe-recipe-share.vercel.app',
+      'https://recipe-share-app.vercel.app',
+      process.env.CLIENT_URL
+    ].filter(Boolean),
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true
   }
 });
 
@@ -39,8 +45,35 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://sawe-recipe-share.vercel.app',
+    'https://recipe-share-app.vercel.app',
+    process.env.CLIENT_URL
+  ].filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path} - Origin: ${req.headers.origin} - User-Agent: ${req.headers['user-agent']}`);
+  next();
+});
+
 app.use(morgan('combined'));
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
@@ -71,6 +104,16 @@ app.use('/api/users', userRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Recipe Share API is running' });
+});
+
+// Simple test endpoint for CORS
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'API is working!',
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin
+  });
 });
 
 // Test database endpoint
