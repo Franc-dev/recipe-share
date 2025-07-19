@@ -47,25 +47,13 @@ const limiter = rateLimit({
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
+  contentSecurityPolicy: false, // Disable CSP for testing
 }));
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'https://sawe-recipe-share.vercel.app',
-    'https://recipe-share-app.vercel.app',
-    process.env.CLIENT_URL
-  ].filter(Boolean),
+  origin: true, // Allow all origins for testing
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept']
 }));
 
 // Debug middleware to log all requests
@@ -112,8 +100,29 @@ app.get('/api/test', (req, res) => {
     status: 'OK', 
     message: 'API is working!',
     timestamp: new Date().toISOString(),
-    origin: req.headers.origin
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent']
   });
+});
+
+// Public recipes endpoint for testing
+app.get('/api/public/recipes', async (req, res) => {
+  try {
+    const Recipe = require('./models/Recipe');
+    const recipes = await Recipe.find({ isPublic: true }).limit(5);
+    res.json({
+      success: true,
+      message: 'Public recipes endpoint working',
+      count: recipes.length,
+      recipes: recipes.map(r => ({ id: r._id, title: r.title }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching recipes',
+      error: error.message
+    });
+  }
 });
 
 // Test database endpoint
