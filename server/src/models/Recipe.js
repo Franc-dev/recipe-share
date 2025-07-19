@@ -4,13 +4,13 @@ const mongoose = require('mongoose');
 const ingredientSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Ingredient name is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   amount: {
     type: String,
-    required: [true, 'Ingredient amount is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   unit: {
     type: String,
@@ -22,12 +22,12 @@ const ingredientSchema = new mongoose.Schema({
 const instructionSchema = new mongoose.Schema({
   step: {
     type: Number,
-    required: [true, 'Step number is required']
+    default: 1
   },
   description: {
     type: String,
-    required: [true, 'Instruction description is required'],
-    trim: true
+    trim: true,
+    default: ''
   }
 });
 
@@ -56,14 +56,12 @@ const recipeSchema = new mongoose.Schema({
   title: {
     type: String,
     required: [true, 'Recipe title is required'],
-    trim: true,
-    maxlength: [100, 'Title cannot exceed 100 characters']
+    trim: true
   },
   description: {
     type: String,
     required: [true, 'Recipe description is required'],
-    trim: true,
-    maxlength: [1000, 'Description cannot exceed 1000 characters']
+    trim: true
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -76,18 +74,18 @@ const recipeSchema = new mongoose.Schema({
   },
   prepTime: {
     type: Number,
-    required: [true, 'Preparation time is required'],
-    min: [1, 'Preparation time must be at least 1 minute']
+    default: 0,
+    min: [0, 'Preparation time cannot be negative']
   },
   cookTime: {
     type: Number,
-    required: [true, 'Cooking time is required'],
+    default: 0,
     min: [0, 'Cooking time cannot be negative']
   },
   servings: {
     type: Number,
-    required: [true, 'Number of servings is required'],
-    min: [1, 'Servings must be at least 1']
+    default: 1,
+    min: [0, 'Servings cannot be negative']
   },
   difficulty: {
     type: String,
@@ -96,16 +94,22 @@ const recipeSchema = new mongoose.Schema({
   },
   cuisine: {
     type: String,
-    required: [true, 'Cuisine type is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   category: {
     type: String,
     required: [true, 'Recipe category is required'],
     enum: ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread', 'Other']
   },
-  ingredients: [ingredientSchema],
-  instructions: [instructionSchema],
+  ingredients: {
+    type: [ingredientSchema],
+    default: []
+  },
+  instructions: {
+    type: [instructionSchema],
+    default: []
+  },
   tags: [{
     type: String,
     trim: true

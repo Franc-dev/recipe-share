@@ -5,8 +5,11 @@ A comprehensive full-stack MERN application that allows users to share, discover
 ## 🚀 Live Demo
 
 - **Frontend**: [Deployed on Vercel](https://recipe-share-app.vercel.app)
-- **Backend**: [Deployed on Render](https://recipe-share-api.onrender.com)
-- **Video Demo**: [5-minute walkthrough](https://youtu.be/your-demo-video)
+- **Backend**: [Deployed on LeapCell](https://leapcell.io/)
+
+### 📹 Video Demo
+
+<div style="position: relative; box-sizing: content-box; max-height: 80vh; max-height: 80svh; width: 100%; aspect-ratio: 2.1068032187271397; padding: 40px 0 40px 0;"><iframe src="https://app.supademo.com/embed/cmdabc3cj0b4z10or5ss8vcny?embed_v=2" loading="lazy" title="Supademo Demo" allow="clipboard-write" frameborder="0" webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 
 ## ✨ Features
 
@@ -252,11 +255,6 @@ npm test -- --watch   # Run tests in watch mode
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
 
 ## 🙏 Acknowledgments
 

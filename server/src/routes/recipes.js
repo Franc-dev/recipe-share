@@ -5,6 +5,7 @@ const { body, validationResult, query } = require('express-validator');
 const Recipe = require('../models/Recipe');
 const User = require('../models/User');
 const { auth, adminAuth } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -313,63 +314,153 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/recipes
 // @desc    Create a new recipe
 // @access  Private
-router.post('/', auth, [
-  body('title')
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Title must be between 1 and 100 characters'),
-  body('description')
-    .isLength({ min: 1, max: 1000 })
-    .withMessage('Description must be between 1 and 1000 characters'),
-  body('prepTime')
-    .isInt({ min: 1 })
-    .withMessage('Preparation time must be at least 1 minute'),
-  body('cookTime')
-    .isInt({ min: 0 })
-    .withMessage('Cooking time cannot be negative'),
-  body('servings')
-    .isInt({ min: 1 })
-    .withMessage('Servings must be at least 1'),
-  body('difficulty')
-    .isIn(['Easy', 'Medium', 'Hard'])
-    .withMessage('Difficulty must be Easy, Medium, or Hard'),
-  body('cuisine')
-    .notEmpty()
-    .withMessage('Cuisine is required'),
-  body('category')
-    .isIn(['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread', 'Other'])
-    .withMessage('Invalid category'),
-  body('ingredients')
-    .isArray({ min: 1 })
-    .withMessage('At least one ingredient is required'),
-  body('ingredients.*.name')
-    .notEmpty()
-    .withMessage('Ingredient name is required'),
-  body('ingredients.*.amount')
-    .notEmpty()
-    .withMessage('Ingredient amount is required'),
-  body('instructions')
-    .isArray({ min: 1 })
-    .withMessage('At least one instruction is required'),
-  body('instructions.*.description')
-    .notEmpty()
-    .withMessage('Instruction description is required')
-], async (req, res) => {
+router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.error('Validation errors:', errors.array());
+    // Parse recipe data from multipart form
+    let recipeData;
+    if (req.body.data) {
+      try {
+        recipeData = JSON.parse(req.body.data);
+      } catch (parseError) {
+        console.error('Error parsing recipe data:', parseError);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid recipe data format'
+        });
+      }
+    } else {
+      recipeData = req.body;
+    }
+
+    // Add image path if uploaded
+    if (req.file) {
+      recipeData.image = `/uploads/${req.file.filename}`;
+    }
+
+    // Custom validation for parsed data
+    const errors = [];
+    
+    if (!recipeData.title || recipeData.title.trim().length === 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Title is required',
+        path: 'title',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.description || recipeData.description.trim().length === 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Description is required',
+        path: 'description',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.prepTime || isNaN(recipeData.prepTime) || parseInt(recipeData.prepTime) < 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Preparation time cannot be negative',
+        path: 'prepTime',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.cookTime || isNaN(recipeData.cookTime) || parseInt(recipeData.cookTime) < 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Cooking time cannot be negative',
+        path: 'cookTime',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.servings || isNaN(recipeData.servings) || parseInt(recipeData.servings) < 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Servings cannot be negative',
+        path: 'servings',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.difficulty || !['Easy', 'Medium', 'Hard'].includes(recipeData.difficulty)) {
+      errors.push({
+        type: 'field',
+        msg: 'Difficulty must be Easy, Medium, or Hard',
+        path: 'difficulty',
+        location: 'body'
+      });
+    }
+    
+    // Make cuisine optional - only validate if provided
+    if (recipeData.cuisine && recipeData.cuisine.trim().length === 0) {
+      errors.push({
+        type: 'field',
+        msg: 'Cuisine cannot be empty if provided',
+        path: 'cuisine',
+        location: 'body'
+      });
+    }
+    
+    if (!recipeData.category || !['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread', 'Other'].includes(recipeData.category)) {
+      errors.push({
+        type: 'field',
+        msg: 'Invalid category',
+        path: 'category',
+        location: 'body'
+      });
+    }
+    
+    // Make ingredients optional but validate if provided
+    if (recipeData.ingredients && Array.isArray(recipeData.ingredients)) {
+      recipeData.ingredients.forEach((ingredient, index) => {
+        if (ingredient.name && ingredient.name.trim().length === 0) {
+          errors.push({
+            type: 'field',
+            msg: 'Ingredient name cannot be empty if provided',
+            path: `ingredients.${index}.name`,
+            location: 'body'
+          });
+        }
+        if (ingredient.amount && ingredient.amount.trim().length === 0) {
+          errors.push({
+            type: 'field',
+            msg: 'Ingredient amount cannot be empty if provided',
+            path: `ingredients.${index}.amount`,
+            location: 'body'
+          });
+        }
+      });
+    }
+    
+    // Make instructions optional but validate if provided
+    if (recipeData.instructions && Array.isArray(recipeData.instructions)) {
+      recipeData.instructions.forEach((instruction, index) => {
+        if (instruction.description && instruction.description.trim().length === 0) {
+          errors.push({
+            type: 'field',
+            msg: 'Instruction description cannot be empty if provided',
+            path: `instructions.${index}.description`,
+            location: 'body'
+          });
+        }
+      });
+    }
+    
+    if (errors.length > 0) {
+      console.error('Validation errors:', errors);
       console.error('Request body:', req.body);
+      console.error('Parsed recipe data:', recipeData);
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
-        errors: errors.array()
+        errors: errors
       });
     }
 
-    const recipeData = {
-      ...req.body,
-      author: req.user._id
-    };
+    recipeData.author = req.user._id;
 
     const recipe = new Recipe(recipeData);
     await recipe.save();

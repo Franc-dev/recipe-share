@@ -67,6 +67,12 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Make uploads directory if it doesn't exist
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
+
 // Database connection
 console.log('🔗 Connecting to MongoDB...');
 console.log('MongoDB URI:', process.env.MONGODB_URI ? '***configured***' : 'NOT SET');
@@ -107,6 +113,9 @@ mongoose.connection.on('disconnected', () => {
 mongoose.connection.on('reconnected', () => {
   console.log('✅ MongoDB reconnected');
 });
+
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -167,7 +176,7 @@ app.get('/api/public/recipes', async (req, res) => {
   }
 });
 
-// Simple database test endpoint
+// Simple database test endpoint/
 app.get('/api/test-db-simple', async (req, res) => {
   try {
     const Recipe = require('./models/Recipe');
