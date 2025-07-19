@@ -26,7 +26,7 @@ const SearchResults = () => {
     ['search', query, filters, page],
     async () => {
       const params = new URLSearchParams({
-        q: query,
+        search: query,
         page: page.toString(),
         limit: limit.toString(),
         ...filters
