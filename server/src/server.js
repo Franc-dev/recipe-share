@@ -74,6 +74,16 @@ console.log('MongoDB URI:', process.env.MONGODB_URI || 'mongodb://localhost:2701
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-share', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+  bufferCommands: false, // Disable mongoose buffering
+  bufferMaxEntries: 0, // Disable mongoose buffering
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  serverApi: {
+    version: '1',
+    strict: true,
+    deprecationErrors: true,
+  }
 })
 .then(() => {
   console.log('✅ Connected to MongoDB');
@@ -82,6 +92,19 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-sh
 })
 .catch(err => {
   console.error('❌ MongoDB connection error:', err);
+});
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
 });
 
 // Routes

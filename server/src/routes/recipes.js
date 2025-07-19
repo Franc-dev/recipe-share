@@ -93,14 +93,28 @@ router.get('/', [
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Execute query
-    const recipes = await Recipe.find(query)
-      .populate('author', 'username firstName lastName avatar')
-      .sort(sortObject)
-      .skip(skip)
-      .limit(parseInt(limit));
+    let recipes, total;
+    try {
+      recipes = await Recipe.find(query)
+        .populate('author', 'username firstName lastName avatar')
+        .sort(sortObject)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .maxTimeMS(5000); // 5 second timeout
 
-    // Get total count for pagination
-    const total = await Recipe.countDocuments(query);
+      // Get total count for pagination
+      total = await Recipe.countDocuments(query).maxTimeMS(5000);
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      if (dbError.name === 'MongooseError' && dbError.message.includes('timed out')) {
+        return res.status(503).json({
+          success: false,
+          message: 'Database is temporarily unavailable. Please try again in a moment.',
+          error: 'Database timeout'
+        });
+      }
+      throw dbError;
+    }
 
     res.json({
       success: true,
