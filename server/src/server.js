@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -37,12 +36,6 @@ const io = socketIo(server, {
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-
 // Middleware
 app.use(cors({
   origin: true, // Allow all origins for testing
@@ -58,7 +51,7 @@ app.use((req, res, next) => {
 });
 
 app.use(morgan('combined'));
-app.use(limiter);
+// app.use(limiter); // Temporarily disable rate limiting
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -110,6 +103,11 @@ app.use('/api/users', userRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Recipe Share API is running' });
+});
+
+// Leapcell health check endpoint
+app.get('/kaithhealthcheck', (req, res) => {
+  res.json({ status: 'OK', message: 'Leapcell health check passed' });
 });
 
 // Simple test endpoint for CORS
