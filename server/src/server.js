@@ -22,46 +22,22 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: [
-      'http://localhost:3000',
-      'https://sawe-recipe-share.vercel.app',
-      'https://recipe-share-app.vercel.app',
-      process.env.CLIENT_URL
-    ].filter(Boolean),
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: true
+    credentials: false
   }
 });
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'https://sawe-recipe-share.vercel.app',
-      'https://recipe-share-app.vercel.app'
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+// Allow ALL origins - no CORS restrictions
+app.use(cors({
+  origin: '*',
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
-};
-
-app.use(cors(corsOptions));
+  allowedHeaders: ['*']
+}));
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {
@@ -71,6 +47,15 @@ app.use((req, res, next) => {
 
 // Handle CORS preflight requests
 app.options('*', cors());
+
+// Add CORS headers to ALL responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Credentials', 'false');
+  next();
+});
 
 app.use(morgan('combined'));
 // app.use(limiter); // Temporarily disable rate limiting
@@ -145,9 +130,9 @@ app.get('/api/test', (req, res) => {
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://sawe-recipe-share.vercel.app');
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.header('Access-Control-Allow-Headers', '*');
   res.json({ 
     status: 'OK', 
     message: 'CORS test successful!',
