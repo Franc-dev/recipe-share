@@ -36,7 +36,7 @@ const io = socketIo(server, {
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
 
-// Middleware
+// Middleware.
 app.use(cors({
   origin: true, // Allow all origins for testing
   credentials: true,
