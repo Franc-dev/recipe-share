@@ -3,11 +3,10 @@ import axios from 'axios';
 // Get API base URL based on environment
 const getApiUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    const url = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL || 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
+    // Force use the correct backend URL for production
+    const url = 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
     console.log('🌐 API URL:', url);
     console.log('🌐 Environment:', process.env.NODE_ENV);
-    console.log('🌐 REACT_APP_BACKEND_URL:', process.env.REACT_APP_BACKEND_URL);
-    console.log('🌐 REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
     return url;
   }
   return 'http://localhost:5000';
