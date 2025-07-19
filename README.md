@@ -9,7 +9,19 @@ A comprehensive full-stack MERN application that allows users to share, discover
 
 ### 📹 Video Demo
 
-<div style="position: relative; box-sizing: content-box; max-height: 80vh; max-height: 80svh; width: 100%; aspect-ratio: 2.1068032187271397; padding: 40px 0 40px 0;"><iframe src="https://app.supademo.com/embed/cmdabc3cj0b4z10or5ss8vcny?embed_v=2" loading="lazy" title="Supademo Demo" allow="clipboard-write" frameborder="0" webkitallowfullscreen="true" mozallowfullscreen="true" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+<div style="position: relative; box-sizing: content-box; max-height: 80vh; max-height: 80svh; width: 100%; aspect-ratio: 2.1068032187271397; padding: 40px 0 40px 0;">
+  <iframe 
+    src="https://app.supademo.com/embed/cmdabc3cj0b4z10or5ss8vcny?embed_v=2" 
+    loading="lazy" 
+    title="Supademo Demo" 
+    allow="clipboard-write" 
+    frameborder="0" 
+    webkitallowfullscreen="true" 
+    mozallowfullscreen="true" 
+    allowfullscreen 
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+  </iframe>
+</div>
 
 ## ✨ Features
 
