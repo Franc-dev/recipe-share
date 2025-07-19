@@ -69,15 +69,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // Database connection
 console.log('🔗 Connecting to MongoDB...');
-console.log('MongoDB URI:', process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-share');
+console.log('MongoDB URI:', process.env.MONGODB_URI ? '***configured***' : 'NOT SET');
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-share', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-  bufferCommands: true, // Re-enable buffering to allow queries before connection
-  maxPoolSize: 10, // Maintain up to 10 socket connections
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 10000, // Increase for production
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+  minPoolSize: 2, // Maintain minimum connections
+  retryWrites: true,
+  retryReads: true,
   serverApi: {
     version: '1',
     strict: true,
@@ -91,6 +91,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/recipe-sh
 })
 .catch(err => {
   console.error('❌ MongoDB connection error:', err);
+  process.exit(1); // Exit if database connection fails
 });
 
 // Handle MongoDB connection events
