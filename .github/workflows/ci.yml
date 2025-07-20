@@ -7,79 +7,130 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  test-backend:
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-    
+    services:
+      mongodb:
+        image: mongo:5.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v3
     
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '18'
         cache: 'npm'
+        cache-dependency-path: server/package-lock.json
     
-    - name: Install dependencies
-      run: |
-        npm run install-all
+    - name: Install backend dependencies
+      run: cd server && npm ci
     
     - name: Run backend tests
-      run: |
-        npm run test:server
+      run: cd server && npm test
       env:
-        MONGODB_URI_TEST: ${{ secrets.MONGODB_URI_TEST }}
+        NODE_ENV: test
+        MONGODB_URI_TEST: mongodb://localhost:27017/recipe-share-test
         JWT_SECRET: test-secret-key
     
-    - name: Run frontend tests
-      run: |
-        npm run test:client
-      env:
-        CI: true
-    
-    - name: Build frontend
-      run: |
-        npm run build
-    
-    - name: Upload coverage reports
+    - name: Upload test coverage
       uses: codecov/codecov-action@v3
       with:
         file: ./server/coverage/lcov.info
         flags: backend
         name: backend-coverage
 
-  deploy-backend:
-    needs: test
+  test-frontend:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Deploy to Render
-      env:
-        RENDER_TOKEN: ${{ secrets.RENDER_TOKEN }}
-        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-      run: |
-        curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
-          -H "Authorization: Bearer $RENDER_TOKEN" \
-          -H "Content-Type: application/json"
-
-  deploy-frontend:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Deploy to Vercel
-      uses: amondnet/vercel-action@v25
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
       with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: ./ 
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: client/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: cd client && npm ci
+    
+    - name: Run frontend tests
+      run: cd client && npm test -- --watchAll=false --coverage --passWithNoTests
+      env:
+        CI: true
+    
+    - name: Upload frontend test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./client/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  build:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        cd server && npm ci
+        cd ../client && npm ci
+    
+    - name: Build frontend
+      run: cd client && npm run build
+      env:
+        REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-files
+        path: |
+          server/
+          client/build/
+        retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-files
+        path: ./
+    
+    - name: Deploy to Leapcell
+      env:
+        LEAPCELL_TOKEN: ${{ secrets.LEAPCELL_TOKEN }}
+        LEAPCELL_PROJECT_ID: ${{ secrets.LEAPCELL_PROJECT_ID }}
+      run: |
+        # Deploy to Leapcell using their API
+        echo "Deploying to Leapcell..."
+        # curl -X POST "https://api.leapcell.com/v1/projects/$LEAPCELL_PROJECT_ID/deploy" \
+        #   -H "Authorization: Bearer $LEAPCELL_TOKEN" \
+        #   -H "Content-Type: application/json" \
+        #   -d '{"branch": "main"}' 

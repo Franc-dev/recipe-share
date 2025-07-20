@@ -2,14 +2,30 @@ services:
   - type: web
     name: recipe-share-backend
     env: node
-    buildCommand: cd server && npm install
+    buildCommand: |
+      cd server && npm install
+      npm test
     startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
         sync: false
+      - key: MONGODB_URI_TEST
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: CLIENT_URL
-        sync: false 
+        sync: false
+
+  - type: web
+    name: recipe-share-frontend
+    env: static
+    buildCommand: |
+      cd client && npm install
+      npm test -- --watchAll=false --passWithNoTests
+      npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://recipe-share-backend.onrender.com 

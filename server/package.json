@@ -8,6 +8,8 @@
     "dev": "nodemon src/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
     "seed": "node src/seeders/recipeSeeder.js"
   },
   "dependencies": {
