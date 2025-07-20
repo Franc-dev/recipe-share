@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaSearch } from 'react-icons/fa';
 import RecipeCard from '../components/RecipeCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import api from '../utils/api';
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,14 +19,13 @@ const Home = () => {
     'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread'
   ];
 
-  // Simple fetch function
+  // Use API utility instead of hardcoded localhost
   const fetchData = async (endpoint) => {
     try {
       console.log(`🚀 Fetching: ${endpoint}`);
-      const response = await fetch(`http://localhost:5000${endpoint}`);
-      const data = await response.json();
+      const response = await api.get(endpoint);
       console.log(`✅ Success: ${endpoint}`);
-      return data;
+      return response.data;
     } catch (err) {
       console.error(`❌ Error: ${endpoint}`, err.message);
       throw err;
