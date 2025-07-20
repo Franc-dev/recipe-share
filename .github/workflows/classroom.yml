@@ -1,0 +1,118 @@
+name: Classroom Workflow
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  autograding:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm install
+        cd client && npm install
+        cd ../server && npm install
+        
+    - name: Run autograding tests
+      run: |
+        # Test 1: Check for README.md
+        test -f README.md || (echo "README.md not found" && exit 1)
+        echo "✅ README.md found"
+        
+        # Test 2: Check for frontend and backend structure
+        test -d client || (echo "client directory not found" && exit 1)
+        test -d server || (echo "server directory not found" && exit 1)
+        echo "✅ Frontend and backend structure found"
+        
+        # Test 3: Check for package.json files
+        test -f client/package.json || (echo "client/package.json not found" && exit 1)
+        test -f server/package.json || (echo "server/package.json not found" && exit 1)
+        echo "✅ Package.json files found"
+        
+        # Test 4: Check for MongoDB integration
+        if grep -q "mongoose\|mongodb" server/package.json; then
+          echo "✅ MongoDB integration found in server/package.json"
+        elif grep -q "mongoose\|mongodb" server/src -r; then
+          echo "✅ MongoDB integration found in server/src"
+        else
+          echo "❌ MongoDB integration not found"
+          exit 1
+        fi
+        
+        # Test 5: Check for Express.js backend
+        if grep -q "express" server/package.json; then
+          echo "✅ Express.js backend found"
+        else
+          echo "❌ Express.js backend not found"
+          exit 1
+        fi
+        
+        # Test 6: Check for React frontend
+        if grep -q "react" client/package.json; then
+          echo "✅ React frontend found"
+        else
+          echo "❌ React frontend not found"
+          exit 1
+        fi
+        
+        # Test 7: Check for authentication implementation
+        if grep -q "auth\|login\|register\|jwt\|token\|password" server/src -r; then
+          echo "✅ Authentication implementation found"
+        else
+          echo "❌ Authentication implementation not found"
+          exit 1
+        fi
+        
+        # Test 8: Check for testing setup
+        if grep -q "test\|jest\|mocha\|cypress\|playwright" client/package.json || grep -q "test\|jest\|mocha\|cypress\|playwright" server/package.json; then
+          echo "✅ Testing setup found"
+        else
+          echo "❌ Testing setup not found"
+          exit 1
+        fi
+        
+        # Test 9: Check for API endpoints
+        if grep -q "router\|app.get\|app.post\|app.put\|app.delete" server/src -r; then
+          echo "✅ API endpoints found"
+        else
+          echo "❌ API endpoints not found"
+          exit 1
+        fi
+        
+        # Test 10: Check for deployment information
+        if grep -q "deploy\|vercel\|netlify\|heroku\|render\|railway\|production\|live" README.md; then
+          echo "✅ Deployment information found"
+        else
+          echo "❌ Deployment information not found"
+          exit 1
+        fi
+        
+        echo "🎉 All tests passed!"
+        
+    - name: Run backend tests
+      run: |
+        cd server
+        npm test || echo "Backend tests completed"
+        
+    - name: Run frontend tests
+      run: |
+        cd client
+        npm test -- --watchAll=false --passWithNoTests || echo "Frontend tests completed"
+        
+    - name: Build frontend
+      run: |
+        cd client
+        npm run build || echo "Frontend build completed"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useApi, useMutation } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import RecipeCard from '../components/RecipeCard';
@@ -11,348 +11,268 @@ import toast from 'react-hot-toast';
 const UserProfile = () => {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
   
   const [activeTab, setActiveTab] = useState('recipes');
+  const [followLoading, setFollowLoading] = useState(false);
 
   // Fetch user profile
-  const { data: userProfile, isLoading: profileLoading, error: profileError } = useQuery(
-    ['userProfile', username],
-    async () => {
-      const response = await api.get(`/api/users/profile/${username}`);
-      return response.data.data;
-    }
+  const { data: userProfile, loading: profileLoading, error: profileError } = useApi(
+    `/api/users/profile/${username}`,
+    { enabled: !!username }
   );
 
   // Fetch user's recipes
-  const { data: userRecipes, isLoading: recipesLoading } = useQuery(
-    ['userRecipes', username],
-    async () => {
-      const response = await api.get(`/api/users/${username}/recipes`);
-      return response.data.data;
-    },
+  const { data: userRecipes, loading: recipesLoading } = useApi(
+    `/api/users/${username}/recipes`,
     { enabled: !!username }
   );
 
   // Fetch user's favorites
-  const { data: userFavorites, isLoading: favoritesLoading } = useQuery(
-    ['userFavorites', username],
-    async () => {
-      const response = await api.get(`/api/users/${username}/favorites`);
-      return response.data.data;
-    },
+  const { data: userFavorites, loading: favoritesLoading } = useApi(
+    `/api/users/${username}/favorites`,
     { enabled: !!username }
   );
 
-  // Follow/Unfollow mutation
-  const followMutation = useMutation(
-    async (userId) => {
-      const response = await api.post(`/api/users/${userId}/follow`);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['userProfile', username]);
-        toast.success('User followed successfully!');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to follow user');
-      }
-    }
-  );
-
-  const unfollowMutation = useMutation(
-    async (userId) => {
-      const response = await api.delete(`/api/users/${userId}/follow`);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['userProfile', username]);
-        toast.success('User unfollowed successfully!');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to unfollow user');
-      }
-    }
-  );
-
-  const handleFollow = () => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to follow users');
-      return;
-    }
-    
-    if (userProfile.isFollowing) {
-      unfollowMutation.mutate(userProfile._id);
-    } else {
-      followMutation.mutate(userProfile._id);
+  const handleFollow = async () => {
+    try {
+      setFollowLoading(true);
+      await api.post(`/api/users/${username}/follow`);
+      toast.success('Successfully followed user!');
+      // Refresh user profile data
+      window.location.reload();
+    } catch (error) {
+      toast.error('Failed to follow user');
+    } finally {
+      setFollowLoading(false);
     }
   };
 
-  const isOwnProfile = currentUser && userProfile && currentUser._id === userProfile._id;
+  // Get user initial for avatar
+  const getUserInitial = (user) => {
+    if (user.firstName && user.lastName) {
+      return (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
+    }
+    if (user.firstName) {
+      return user.firstName.charAt(0).toUpperCase();
+    }
+    if (user.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
 
-  if (profileLoading) return <LoadingSpinner />;
+  if (profileLoading) {
+    return <LoadingSpinner />;
+  }
+
   if (profileError) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="text-6xl mb-4">👤</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">User Not Found</h1>
-          <p className="text-gray-600 mb-6">The user you're looking for doesn't exist or their profile is private.</p>
-          <Link
-            to="/"
-            className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            Back to Home
-          </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-600">
+          <h2 className="text-2xl font-bold mb-4">Error Loading Profile</h2>
+          <p>{profileError.message}</p>
         </div>
       </div>
     );
   }
 
-  if (!userProfile) return null;
+  if (!userProfile?.data) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">User Not Found</h2>
+          <p className="text-gray-600">The user you're looking for doesn't exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const user = userProfile.data;
+  const isOwnProfile = currentUser && currentUser.username === username;
+  const isFollowing = currentUser && user.followers?.includes(currentUser._id);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Link
-            to="/"
-            className="flex items-center text-gray-600 hover:text-gray-800"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back to Home
-          </Link>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      {/* Back Button */}
+      <Link
+        to="/"
+        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
+      >
+        <FaArrowLeft className="mr-2" />
+        Back to Home
+      </Link>
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-          <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
-            {/* Avatar */}
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-orange-100 to-red-100">
-                {userProfile.avatar ? (
-                  <img
-                    src={userProfile.avatar}
-                    alt={`${userProfile.firstName} ${userProfile.lastName}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FaUser className="text-4xl text-orange-500" />
-                  </div>
-                )}
+      {/* Profile Header */}
+      <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
+          {/* Avatar */}
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-orange-100 to-red-100">
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-orange-600">
+                    {getUserInitial(user)}
+                  </span>
+                </div>
+              )}
+            </div>
+            {user.isVerified && (
+              <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-1">
+                <FaUserCheck className="text-sm" />
               </div>
-              
+            )}
+          </div>
+
+          {/* Profile Info */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                  {user.firstName} {user.lastName}
+                </h1>
+                <p className="text-gray-600 mb-2">@{user.username}</p>
+                {user.bio && (
+                  <p className="text-gray-700 mb-4 max-w-2xl">{user.bio}</p>
+                )}
+                
+                {/* Stats */}
+                <div className="flex flex-wrap gap-6 text-sm text-gray-600">
+                  <div className="flex items-center">
+                    <FaBookmark className="mr-1" />
+                    <span>{userRecipes?.data?.length || 0} Recipes</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaHeart className="mr-1" />
+                    <span>{userFavorites?.data?.length || 0} Favorites</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaEye className="mr-1" />
+                    <span>{user.followers?.length || 0} Followers</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaUser className="mr-1" />
+                    <span>{user.following?.length || 0} Following</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Follow Button */}
               {!isOwnProfile && isAuthenticated && (
                 <button
                   onClick={handleFollow}
-                  disabled={followMutation.isLoading || unfollowMutation.isLoading}
-                  className={`absolute -bottom-2 -right-2 p-3 rounded-full text-white transition-colors ${
-                    userProfile.isFollowing 
-                      ? 'bg-red-500 hover:bg-red-600' 
-                      : 'bg-green-500 hover:bg-green-600'
-                  }`}
+                  disabled={followLoading}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                    isFollowing
+                      ? 'bg-gray-500 text-white hover:bg-gray-600'
+                      : 'bg-orange-500 text-white hover:bg-orange-600'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {userProfile.isFollowing ? <FaUserCheck /> : <FaUserPlus />}
+                  {followLoading ? (
+                    'Loading...'
+                  ) : isFollowing ? (
+                    <>
+                      <FaUserCheck className="inline mr-2" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <FaUserPlus className="inline mr-2" />
+                      Follow
+                    </>
+                  )}
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Profile Info */}
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                {userProfile.firstName} {userProfile.lastName}
-              </h1>
-              <p className="text-xl text-gray-600 mb-4">@{userProfile.username}</p>
-              
-              {userProfile.bio && (
-                <p className="text-gray-700 mb-6 max-w-2xl">
-                  {userProfile.bio}
-                </p>
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-md mb-8">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6">
+            <button
+              onClick={() => setActiveTab('recipes')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'recipes'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Recipes ({userRecipes?.data?.length || 0})
+            </button>
+            <button
+              onClick={() => setActiveTab('favorites')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'favorites'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Favorites ({userFavorites?.data?.length || 0})
+            </button>
+          </nav>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'recipes' ? (
+            <div>
+              {recipesLoading ? (
+                <LoadingSpinner />
+              ) : userRecipes?.data && userRecipes.data.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {userRecipes.data.map(recipe => (
+                    <RecipeCard key={recipe._id} recipe={recipe} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-6xl mb-4">
+                    <FaBookmark />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                    No recipes yet
+                  </h3>
+                  <p className="text-gray-500">
+                    {isOwnProfile 
+                      ? "You haven't created any recipes yet."
+                      : `${user.firstName} hasn't created any recipes yet.`
+                    }
+                  </p>
+                </div>
               )}
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-500">
-                    {userRecipes?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Recipes</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-500">
-                    {userFavorites?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Favorites</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-500">
-                    {userProfile.followers?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Followers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-500">
-                    {userProfile.following?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Following</div>
-                </div>
-              </div>
-
-              {/* Member Since */}
-              <div className="text-sm text-gray-500">
-                Member since {new Date(userProfile.createdAt).toLocaleDateString()}
-              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              <button
-                onClick={() => setActiveTab('recipes')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'recipes'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <FaBookmark className="inline mr-2" />
-                Recipes ({userRecipes?.length || 0})
-              </button>
-              <button
-                onClick={() => setActiveTab('favorites')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'favorites'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <FaHeart className="inline mr-2" />
-                Favorites ({userFavorites?.length || 0})
-              </button>
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 'recipes' ? (
-              <div>
-                {recipesLoading ? (
-                  <LoadingSpinner />
-                ) : userRecipes?.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userRecipes.map((recipe) => (
-                      <RecipeCard key={recipe._id} recipe={recipe} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="text-6xl mb-4">🍽️</div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No recipes yet</h3>
-                    <p className="text-gray-600">
-                      {isOwnProfile 
-                        ? "You haven't created any recipes yet. Start sharing your culinary creations!"
-                        : `${userProfile.firstName} hasn't shared any recipes yet.`
-                      }
-                    </p>
-                    {isOwnProfile && (
-                      <Link
-                        to="/create-recipe"
-                        className="inline-block mt-4 bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
-                      >
-                        Create Your First Recipe
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                {favoritesLoading ? (
-                  <LoadingSpinner />
-                ) : userFavorites?.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userFavorites.map((recipe) => (
-                      <RecipeCard key={recipe._id} recipe={recipe} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="text-6xl mb-4">💔</div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No favorites yet</h3>
-                    <p className="text-gray-600">
-                      {isOwnProfile 
-                        ? "You haven't favorited any recipes yet. Start exploring and saving your favorites!"
-                        : `${userProfile.firstName} hasn't favorited any recipes yet.`
-                      }
-                    </p>
-                    {isOwnProfile && (
-                      <Link
-                        to="/"
-                        className="inline-block mt-4 bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
-                      >
-                        Explore Recipes
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Activity</h2>
-          
-          {recipesLoading ? (
-            <LoadingSpinner />
           ) : (
-            <div className="space-y-4">
-              {userRecipes?.slice(0, 5).map((recipe) => (
-                <div key={recipe._id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <FaBookmark className="text-orange-500" />
-                  </div>
-                  <div className="flex-1">
-                    <Link 
-                      to={`/recipe/${recipe._id}`}
-                      className="font-medium text-gray-800 hover:text-orange-600 transition-colors"
-                    >
-                      {recipe.title}
-                    </Link>
-                    <p className="text-sm text-gray-600">
-                      Created {new Date(recipe.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span className="flex items-center">
-                      <FaEye className="mr-1" />
-                      {recipe.views || 0}
-                    </span>
-                    <span className="flex items-center">
-                      <FaHeart className="mr-1" />
-                      {recipe.likes?.length || 0}
-                    </span>
-                    <span className="flex items-center">
-                      <FaStar className="mr-1" />
-                      {recipe.averageRating?.toFixed(1) || '0.0'}
-                    </span>
-                  </div>
+            <div>
+              {favoritesLoading ? (
+                <LoadingSpinner />
+              ) : userFavorites?.data && userFavorites.data.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {userFavorites.data.map(recipe => (
+                    <RecipeCard key={recipe._id} recipe={recipe} />
+                  ))}
                 </div>
-              ))}
-              
-              {userRecipes?.length === 0 && (
-                <p className="text-gray-500 text-center py-4">
-                  No recent activity to show.
-                </p>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-6xl mb-4">
+                    <FaHeart />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                    No favorites yet
+                  </h3>
+                  <p className="text-gray-500">
+                    {isOwnProfile 
+                      ? "You haven't favorited any recipes yet."
+                      : `${user.firstName} hasn't favorited any recipes yet.`
+                    }
+                  </p>
+                </div>
               )}
             </div>
           )}

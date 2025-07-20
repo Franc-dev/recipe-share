@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useApi, useMutation } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { FaEdit, FaSave, FaCamera, FaUser, FaEnvelope, FaLock, FaHeart, FaBookmark, FaEye } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
-  const queryClient = useQueryClient();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -30,48 +28,24 @@ const Profile = () => {
   });
 
   // Fetch user's recipes
-  const { data: userRecipes, isLoading: recipesLoading } = useQuery(
-    ['userRecipes', user?._id],
-    async () => {
-      const response = await api.get('/api/users/my-recipes');
-      return response.data.data;
-    },
+  const { data: userRecipes, loading: recipesLoading } = useApi(
+    '/api/users/my-recipes',
     { enabled: !!user }
   );
 
   // Fetch user's favorites
-  const { data: userFavorites, isLoading: favoritesLoading } = useQuery(
-    ['userFavorites', user?._id],
-    async () => {
-      const response = await api.get('/api/users/favorites');
-      return response.data.data;
-    },
+  const { data: userFavorites, loading: favoritesLoading } = useApi(
+    '/api/users/favorites',
     { enabled: !!user }
   );
 
   // Update profile mutation
   const updateProfileMutation = useMutation(
-    async (profileData) => {
-      const formDataToSend = new FormData();
-      
-      if (avatarFile) {
-        formDataToSend.append('avatar', avatarFile);
-      }
-      
-      formDataToSend.append('data', JSON.stringify(profileData));
-      
-      const response = await api.put('/api/auth/profile', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    },
+    '/api/auth/profile',
     {
+      method: 'PUT',
       onSuccess: (data) => {
         updateUser(data.data);
-        queryClient.invalidateQueries(['userRecipes']);
-        queryClient.invalidateQueries(['userFavorites']);
         toast.success('Profile updated successfully!');
         setIsEditing(false);
         setAvatarFile(null);
@@ -85,11 +59,9 @@ const Profile = () => {
 
   // Change password mutation
   const changePasswordMutation = useMutation(
-    async (passwordData) => {
-      const response = await api.post('/api/auth/change-password', passwordData);
-      return response.data;
-    },
+    '/api/auth/change-password',
     {
+      method: 'POST',
       onSuccess: () => {
         toast.success('Password changed successfully!');
         setIsChangingPassword(false);
@@ -135,7 +107,16 @@ const Profile = () => {
 
   const handleProfileSubmit = (e) => {
     e.preventDefault();
-    updateProfileMutation.mutate(formData);
+    
+    const formDataToSend = new FormData();
+    
+    if (avatarFile) {
+      formDataToSend.append('avatar', avatarFile);
+    }
+    
+    formDataToSend.append('data', JSON.stringify(formData));
+    
+    updateProfileMutation.mutate(formDataToSend);
   };
 
   const handlePasswordSubmit = (e) => {
@@ -151,352 +132,338 @@ const Profile = () => {
       return;
     }
     
-    changePasswordMutation.mutate({
-      currentPassword: passwordData.currentPassword,
-      newPassword: passwordData.newPassword
-    });
-  };
-
-  const cancelEdit = () => {
-    setIsEditing(false);
-    setFormData({
-      firstName: user?.firstName || '',
-      lastName: user?.lastName || '',
-      username: user?.username || '',
-      email: user?.email || '',
-      bio: user?.bio || ''
-    });
-    setAvatarFile(null);
-    setAvatarPreview('');
+    changePasswordMutation.mutate(passwordData);
   };
 
   if (!user) {
     return <LoadingSpinner />;
   }
 
+  // Get user initial for avatar
+  const getUserInitial = () => {
+    if (user.firstName && user.lastName) {
+      return (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
+    }
+    if (user.firstName) {
+      return user.firstName.charAt(0).toUpperCase();
+    }
+    if (user.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Profile</h1>
-          <p className="text-gray-600">Manage your account and preferences</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Card */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              {/* Avatar Section */}
-              <div className="text-center mb-6">
-                <div className="relative inline-block">
-                  <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-orange-100 to-red-100 mx-auto mb-4">
-                    {avatarPreview ? (
-                      <img
-                        src={avatarPreview}
-                        alt="Avatar preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt="Profile avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <FaUser className="text-4xl text-orange-500" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {isEditing && (
-                    <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-2 rounded-full cursor-pointer hover:bg-orange-600 transition-colors">
-                      <FaCamera className="text-sm" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-                
-                <h2 className="text-xl font-semibold text-gray-800">
-                  {user.firstName} {user.lastName}
-                </h2>
-                <p className="text-gray-600">@{user.username}</p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-500">
-                    {userRecipes?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Recipes</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-500">
-                    {userFavorites?.length || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Favorites</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-500">
-                    {user.views || 0}
-                  </div>
-                  <div className="text-sm text-gray-600">Views</div>
-                </div>
-              </div>
-
-              {/* Bio */}
-              {user.bio && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-2">About</h3>
-                  <p className="text-gray-600 text-sm">{user.bio}</p>
-                </div>
-              )}
-
-              {/* Member Since */}
-              <div className="text-center text-sm text-gray-500">
-                Member since {new Date(user.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-
-          {/* Profile Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Profile Information */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-800">Profile Information</h2>
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                  >
-                    <FaEdit className="mr-2" />
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={cancelEdit}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleProfileSubmit}
-                      disabled={updateProfileMutation.isLoading}
-                      className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
-                    >
-                      <FaSave className="mr-2" />
-                      {updateProfileMutation.isLoading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <form onSubmit={handleProfileSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bio
-                  </label>
-                  <textarea
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    rows="4"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100"
-                    placeholder="Tell us about yourself..."
-                  />
-                </div>
-              </form>
-            </div>
-
-            {/* Change Password */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-800">Change Password</h2>
-                {!isChangingPassword ? (
-                  <button
-                    onClick={() => setIsChangingPassword(true)}
-                    className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    <FaLock className="mr-2" />
-                    Change Password
-                  </button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => {
-                        setIsChangingPassword(false);
-                        setPasswordData({
-                          currentPassword: '',
-                          newPassword: '',
-                          confirmPassword: ''
-                        });
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handlePasswordSubmit}
-                      disabled={changePasswordMutation.isLoading}
-                      className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
-                    >
-                      <FaSave className="mr-2" />
-                      {changePasswordMutation.isLoading ? 'Changing...' : 'Change Password'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {isChangingPassword && (
-                <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Password
-                    </label>
-                    <input
-                      type="password"
-                      name="currentPassword"
-                      value={passwordData.currentPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      New Password
-                    </label>
-                    <input
-                      type="password"
-                      name="newPassword"
-                      value={passwordData.newPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      minLength="6"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm New Password
-                    </label>
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      value={passwordData.confirmPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      minLength="6"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-                </form>
-              )}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Activity</h2>
-              
-              {recipesLoading || favoritesLoading ? (
-                <LoadingSpinner />
+    <div className="container mx-auto px-4 py-8">
+      {/* Profile Header */}
+      <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-8">
+          {/* Avatar Section */}
+          <div className="relative">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-orange-100 to-red-100">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Avatar preview"
+                  className="w-full h-full object-cover"
+                />
+              ) : user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt="Profile avatar"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <div className="space-y-4">
-                  {userRecipes?.slice(0, 3).map((recipe) => (
-                    <div key={recipe._id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <FaBookmark className="text-orange-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{recipe.title}</p>
-                        <p className="text-sm text-gray-600">Created {new Date(recipe.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {recipe.views || 0} views
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {userRecipes?.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">
-                      No recipes created yet. Start sharing your culinary creations!
-                    </p>
-                  )}
+                <div className="w-full h-full flex items-center justify-center">
+                  <FaUser className="text-4xl text-orange-500" />
                 </div>
               )}
             </div>
+            
+            {isEditing && (
+              <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-2 rounded-full cursor-pointer hover:bg-orange-600 transition-colors">
+                <FaCamera className="text-sm" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Profile Info */}
+          <div className="flex-1">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                  {user.firstName} {user.lastName}
+                </h1>
+                <p className="text-gray-600 mb-2">@{user.username}</p>
+                {user.bio && (
+                  <p className="text-gray-700 mb-4 max-w-2xl">{user.bio}</p>
+                )}
+                
+                {/* Stats */}
+                <div className="flex flex-wrap gap-6 text-sm text-gray-600">
+                  <div className="flex items-center">
+                    <FaBookmark className="mr-1" />
+                    <span>{userRecipes?.data?.length || 0} Recipes</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaHeart className="mr-1" />
+                    <span>{userFavorites?.data?.length || 0} Favorites</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaEye className="mr-1" />
+                    <span>Member since {new Date(user.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Button */}
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="mt-4 md:mt-0 px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+              >
+                {isEditing ? (
+                  <>
+                    <FaSave className="inline mr-2" />
+                    Save Changes
+                  </>
+                ) : (
+                  <>
+                    <FaEdit className="inline mr-2" />
+                    Edit Profile
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Edit Profile Form */}
+      {isEditing && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Edit Profile</h2>
+          
+          <form onSubmit={handleProfileSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FaUser className="inline mr-1" />
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FaUser className="inline mr-1" />
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FaUser className="inline mr-1" />
+                Username
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FaEnvelope className="inline mr-1" />
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bio
+              </label>
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleInputChange}
+                rows="3"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateProfileMutation.loading}
+                className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                {updateProfileMutation.loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Change Password Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">Change Password</h2>
+          <button
+            onClick={() => setIsChangingPassword(!isChangingPassword)}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+          >
+            {isChangingPassword ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+        
+        {isChangingPassword && (
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FaLock className="inline mr-1" />
+                Current Password
+              </label>
+              <input
+                type="password"
+                name="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={handlePasswordChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FaLock className="inline mr-1" />
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FaLock className="inline mr-1" />
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={changePasswordMutation.loading}
+                className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                {changePasswordMutation.loading ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Activity</h2>
+        
+        {recipesLoading ? (
+          <LoadingSpinner />
+        ) : (
+          <div className="space-y-4">
+            {userRecipes?.data?.slice(0, 5).map((recipe) => (
+              <div key={recipe._id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <FaBookmark className="text-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <a 
+                    href={`/recipe/${recipe._id}`}
+                    className="font-medium text-gray-800 hover:text-orange-600 transition-colors"
+                  >
+                    {recipe.title}
+                  </a>
+                  <p className="text-sm text-gray-600">
+                    Created {new Date(recipe.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span className="flex items-center">
+                    <FaEye className="mr-1" />
+                    {recipe.views || 0}
+                  </span>
+                  <span className="flex items-center">
+                    <FaHeart className="mr-1" />
+                    {recipe.likes?.length || 0}
+                  </span>
+                </div>
+              </div>
+            ))}
+            
+            {userRecipes?.data?.length === 0 && (
+              <p className="text-gray-500 text-center py-4">
+                No recent activity to show.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

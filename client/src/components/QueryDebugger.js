@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
-import api from '../utils/api';
+import { useApi } from '../hooks/useApi';
 import { testServerConnection, testApiUrl } from '../utils/testConnection';
 
 const QueryDebugger = () => {
@@ -18,34 +17,20 @@ const QueryDebugger = () => {
     });
   }, []);
 
-  // Test query to debug React Query issues
-  const { data, isLoading, error, isError, isFetching } = useQuery(
-    'testQuery',
-    async () => {
-      console.log('🔍 Test query executing...');
-      const response = await api.get('/api/health');
-      console.log('✅ Test query successful:', response.data);
-      return response.data;
-    },
-    {
-      retry: 1,
-      retryDelay: 1000,
-      staleTime: 0,
-      cacheTime: 0,
-    }
-  );
+  // Test query to debug API issues
+  const { data, loading, error } = useApi('/api/health', {
+    enabled: true
+  });
 
   console.log('🔍 QueryDebugger state:', {
     data,
-    isLoading,
-    error,
-    isError,
-    isFetching
+    loading,
+    error
   });
 
   return (
     <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-lg m-4">
-      <h3 className="font-bold text-yellow-800 mb-2">React Query Debugger</h3>
+      <h3 className="font-bold text-yellow-800 mb-2">API Debugger</h3>
       
       <div className="text-sm space-y-2">
         <div>
@@ -66,15 +51,11 @@ const QueryDebugger = () => {
         </div>
         
         <div>
-          <strong>Query Loading:</strong> {isLoading ? 'Yes' : 'No'}
+          <strong>Query Loading:</strong> {loading ? 'Yes' : 'No'}
         </div>
         
         <div>
-          <strong>Query Fetching:</strong> {isFetching ? 'Yes' : 'No'}
-        </div>
-        
-        <div>
-          <strong>Query Error:</strong> {isError ? 'Yes' : 'No'}
+          <strong>Query Error:</strong> {error ? 'Yes' : 'No'}
         </div>
         
         {error && (
