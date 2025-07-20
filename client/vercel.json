@@ -26,6 +26,6 @@
     }
   ],
   "env": {
-    "REACT_APP_BACKEND_URL": "https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev"
+    "REACT_APP_BACKEND_URL": "https://recipe-share-frontend-production.up.railway.app"
   }
 } 

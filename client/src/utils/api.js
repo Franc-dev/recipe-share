@@ -22,7 +22,7 @@ const getApiUrl = () => {
   }
   
   // Production fallback
-  const url = 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
+  const url = 'https://recipe-share-frontend-production.up.railway.app';
   console.log('🌐 API URL (production):', url);
   return url;
 };

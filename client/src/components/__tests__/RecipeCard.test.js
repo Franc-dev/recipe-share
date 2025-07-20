@@ -54,7 +54,11 @@ describe('RecipeCard Component', () => {
     const { rerender } = renderWithRouter(<RecipeCard recipe={mediumRecipe} />);
     expect(screen.getByText('Medium')).toBeInTheDocument();
 
-    rerender(<RecipeCard recipe={hardRecipe} />);
+    rerender(
+      <BrowserRouter>
+        <RecipeCard recipe={hardRecipe} />
+      </BrowserRouter>
+    );
     expect(screen.getByText('Hard')).toBeInTheDocument();
   });
 
@@ -105,9 +109,9 @@ describe('RecipeCard Component', () => {
   });
 
   it('displays favorite button when user is authenticated', () => {
-    renderWithRouter(<RecipeCard recipe={mockRecipe} />);
+    renderWithRouter(<RecipeCard recipe={mockRecipe} onFavorite={jest.fn()} />);
     
-    // Look for favorite button (assuming it has a heart icon or similar)
+    // Look for favorite button
     const favoriteButton = screen.getByRole('button', { name: /favorite/i });
     expect(favoriteButton).toBeInTheDocument();
   });
@@ -120,5 +124,12 @@ describe('RecipeCard Component', () => {
     fireEvent.click(favoriteButton);
     
     expect(mockOnFavorite).toHaveBeenCalledWith(mockRecipe._id);
+  });
+
+  it('does not display favorite button when onFavorite prop is not provided', () => {
+    renderWithRouter(<RecipeCard recipe={mockRecipe} />);
+    
+    // Should not find favorite button
+    expect(screen.queryByRole('button', { name: /favorite/i })).not.toBeInTheDocument();
   });
 }); 
