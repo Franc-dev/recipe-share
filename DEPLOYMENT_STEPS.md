@@ -193,6 +193,6 @@ Once both deployments are working:
 
 Update your README.md with these URLs and create your video demo!
 
----
+----
 
 **Remember:** You're deploying the **same repository** but each platform only uses the part it needs! 🚀 
