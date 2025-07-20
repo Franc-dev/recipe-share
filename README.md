@@ -42,7 +42,6 @@ Experience the full RecipeShare application with this interactive demo showcasin
 
 ### ❤️ Social Features
 - Like and favorite recipes
-- Follow other users
 - View top chefs and popular recipes
 - User activity feeds
 
