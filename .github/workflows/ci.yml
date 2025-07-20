@@ -51,7 +51,7 @@ jobs:
   build:
     needs: [test-backend]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: false  # Skip this job - always false condition
     
     steps:
     - uses: actions/checkout@v3
@@ -75,7 +75,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: false  # Skip this job since build is skipped
     
     steps:
     - uses: actions/checkout@v3
