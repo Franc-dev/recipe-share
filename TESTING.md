@@ -1,291 +1,177 @@
-# Automated Testing Setup
+# 🧪 Testing Guide
 
-This document describes the automated testing setup for the RecipeShare application deployed on Leapcell.
+## Quick Start
 
-## 🧪 Testing Overview
+```bash
+# Run basic tests (no MongoDB required)
+npm test
 
-The application includes comprehensive automated testing for both backend and frontend components:
+# Run all tests (requires MongoDB)
+cd server && npm run test:all
 
-- **Backend Tests**: API endpoint testing with Jest and Supertest
-- **Frontend Tests**: React component testing with React Testing Library
-- **CI/CD Integration**: Automated testing in deployment pipeline
-- **Coverage Reporting**: Code coverage analysis
-
-## 📁 Test Structure
-
-```
-├── server/
-│   ├── src/tests/
-│   │   ├── auth.test.js          # Authentication endpoint tests
-│   │   ├── recipes.test.js       # Recipe endpoint tests
-│   │   ├── users.test.js         # User endpoint tests
-│   │   └── setup.js              # Test configuration
-│   └── jest.config.js            # Jest configuration
-├── client/
-│   └── src/
-│       ├── components/__tests__/
-│       │   └── RecipeCard.test.js # Component tests
-│       └── contexts/__tests__/
-│           └── AuthContext.test.js # Context tests
-├── .github/workflows/
-│   └── ci.yml                    # GitHub Actions CI/CD
-├── test.sh                       # Local test runner
-└── render.yaml                   # Leapcell deployment config
+# Run tests with coverage
+cd server && npm run test:coverage
 ```
 
-## 🚀 Running Tests
+## Test Types
+
+### ✅ Basic Tests (Always Work)
+These tests verify core API functionality without requiring MongoDB:
+
+- **Health Endpoints**: `/health`, `/api/health`
+- **Test Endpoints**: `/api/test`, `/api/cors-test`
+- **Error Handling**: 404 responses
+- **CORS Configuration**: Cross-origin requests
+- **Server Setup**: Express app configuration
+
+### 🗄️ Database Tests (Require MongoDB)
+These tests verify database operations and require MongoDB:
+
+- **Authentication**: Register, login, profile
+- **Recipes**: CRUD operations, search, pagination
+- **Users**: Profile management, following system
+- **Data Validation**: Input validation and error handling
+
+## Test Environment
 
 ### Local Development
-
-#### Quick Test (All Tests)
 ```bash
-# Run the automated test script
-./test.sh
+# Basic tests (recommended for daily development)
+npm test
+
+# Full tests (if you have MongoDB running)
+cd server && npm run test:all
 ```
 
-#### Backend Tests Only
+### CI/CD Pipeline
 ```bash
+# All tests run automatically in GitHub Actions
+# MongoDB is provided by the CI environment
+npm run test:ci
+```
+
+## Test Results
+
+### ✅ Success Case
+```
+🧪 Running RecipeShare Tests...
+
+📋 Test Environment:
+   NODE_ENV: test
+   JWT_SECRET: ***set***
+   MONGODB_URI_TEST: mongodb://localhost:27017/recipe-share-test
+
+1️⃣ Running basic API tests...
+✅ Basic tests passed!
+   ✅ Server health endpoints working
+   ✅ API endpoints responding
+   ✅ CORS configuration working
+   ✅ Error handling working
+
+🎯 Core API functionality is working correctly!
+```
+
+### ⚠️ Expected MongoDB Failures
+```
+⚠️ Some tests failed (likely due to MongoDB not running)
+   This is expected if MongoDB is not installed/running locally
+   Tests will pass in CI/CD where MongoDB is provided
+   Basic API functionality is working correctly!
+```
+
+## Troubleshooting
+
+### MongoDB Connection Issues
+If you see MongoDB timeout errors, this is **expected** when MongoDB isn't running locally:
+
+```bash
+# Install MongoDB locally (optional)
+# Or use Docker:
+docker run -d -p 27017:27017 --name mongodb mongo:latest
+
+# Then run full tests:
+cd server && npm run test:all
+```
+
+### Port Conflicts
+If you see "address already in use" errors:
+
+```bash
+# Kill processes using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Or use a different port:
+PORT=5001 npm test
+```
+
+### Test Timeouts
+If tests are taking too long:
+
+```bash
+# Increase timeout in jest.config.js
+testTimeout: 30000
+
+# Or run with shorter timeout for quick feedback:
+cd server && npm run test:watch
+```
+
+## Test Coverage
+
+The test suite covers:
+
+- **API Endpoints**: All routes and HTTP methods
+- **Authentication**: JWT tokens, user sessions
+- **Data Validation**: Input sanitization and validation
+- **Error Handling**: Proper error responses
+- **CORS**: Cross-origin request handling
+- **Database Operations**: CRUD operations with MongoDB
+
+## CI/CD Integration
+
+Tests run automatically in GitHub Actions:
+
+1. **Backend Tests**: Node.js with MongoDB
+2. **Frontend Tests**: React with Jest
+3. **Integration Tests**: API endpoint testing
+4. **Coverage Reports**: Code coverage analysis
+
+## Best Practices
+
+1. **Run basic tests frequently** during development
+2. **Run full tests before commits** if you have MongoDB
+3. **Check CI/CD results** for comprehensive testing
+4. **Use test coverage** to identify untested code
+5. **Mock external dependencies** for faster tests
+
+## File Structure
+
+```
+server/
+├── src/
+│   ├── tests/
+│   │   ├── setup.js          # Test configuration
+│   │   ├── basic.test.js     # Basic API tests
+│   │   ├── auth.test.js      # Authentication tests
+│   │   ├── recipes.test.js   # Recipe CRUD tests
+│   │   └── users.test.js     # User management tests
+│   └── ...
+├── jest.config.js            # Jest configuration
+└── package.json              # Test scripts
+```
+
+## Commands Reference
+
+```bash
+# Root level
+npm test                    # Run basic tests
+npm run test:ci            # Run all tests for CI
+
+# Server level
 cd server
-npm test                    # Run tests in watch mode
-npm run test:coverage       # Run tests with coverage
-npm run test:ci            # Run tests for CI environment
-```
-
-#### Frontend Tests Only
-```bash
-cd client
-npm test                   # Run tests in watch mode
-npm run test:coverage      # Run tests with coverage
-npm run test:ci           # Run tests for CI environment
-```
-
-### Environment Setup
-
-#### Backend Test Environment
-```bash
-export NODE_ENV=test
-export MONGODB_URI_TEST=mongodb://localhost:27017/recipe-share-test
-export JWT_SECRET=test-secret-key
-```
-
-#### Frontend Test Environment
-```bash
-export CI=true
-export REACT_APP_API_URL=http://localhost:5000
-```
-
-## 📊 Test Coverage
-
-### Backend Coverage Requirements
-- **Branches**: 70%
-- **Functions**: 70%
-- **Lines**: 70%
-- **Statements**: 70%
-
-### Frontend Coverage Requirements
-- **Statements**: 70%
-- **Branches**: 70%
-- **Functions**: 70%
-- **Lines**: 70%
-
-## 🔧 Test Configuration
-
-### Jest Configuration (Backend)
-```javascript
-// server/jest.config.js
-module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.js'],
-  collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/server.js',
-    '!src/seeders/**',
-    '!**/node_modules/**'
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
-    }
-  },
-  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.js'],
-  testTimeout: 10000
-};
-```
-
-### Test Setup (Backend)
-```javascript
-// server/src/tests/setup.js
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-secret-key';
-process.env.MONGODB_URI = process.env.MONGODB_URI_TEST || 'mongodb://localhost:27017/recipe-share-test';
-jest.setTimeout(30000);
-```
-
-## 🧪 Test Categories
-
-### Backend Tests
-
-#### Authentication Tests (`auth.test.js`)
-- User registration
-- User login
-- Token validation
-- Profile retrieval
-
-#### Recipe Tests (`recipes.test.js`)
-- Recipe CRUD operations
-- Recipe search functionality
-- Authorization checks
-- Input validation
-
-#### User Tests (`users.test.js`)
-- User profile management
-- User following system
-- User recipe listings
-- Profile updates
-
-### Frontend Tests
-
-#### Component Tests
-- RecipeCard component rendering
-- User interaction handling
-- Props validation
-- Error state handling
-
-#### Context Tests
-- Authentication state management
-- User login/logout flow
-- Token persistence
-- Error handling
-
-## 🔄 CI/CD Integration
-
-### GitHub Actions Workflow
-The `.github/workflows/ci.yml` file defines the CI/CD pipeline:
-
-1. **Backend Testing**: Runs with MongoDB service
-2. **Frontend Testing**: Runs React component tests
-3. **Build Process**: Creates production build
-4. **Deployment**: Deploys to Leapcell (Render)
-
-### Leapcell Integration
-The `render.yaml` file includes test commands in the build process:
-
-```yaml
-services:
-  - type: web
-    name: recipe-share-backend
-    buildCommand: |
-      cd server && npm install
-      npm test
-    # ... other configuration
-
-  - type: web
-    name: recipe-share-frontend
-    buildCommand: |
-      cd client && npm install
-      npm test -- --watchAll=false --passWithNoTests
-      npm run build
-    # ... other configuration
-```
-
-## 🐛 Debugging Tests
-
-### Common Issues
-
-#### MongoDB Connection Issues
-```bash
-# Ensure MongoDB is running
-mongod --dbpath /path/to/data/db
-
-# Or use Docker
-docker run -d -p 27017:27017 --name mongodb mongo:5.0
-```
-
-#### Test Timeout Issues
-```javascript
-// Increase timeout in test files
-jest.setTimeout(30000);
-```
-
-#### Environment Variable Issues
-```bash
-# Check environment variables
-echo $NODE_ENV
-echo $MONGODB_URI_TEST
-echo $JWT_SECRET
-```
-
-### Debug Mode
-```bash
-# Run tests in debug mode
-npm test -- --verbose --detectOpenHandles
-```
-
-## 📈 Coverage Reports
-
-### Generate Coverage Reports
-```bash
-# Backend coverage
-cd server && npm run test:coverage
-
-# Frontend coverage
-cd client && npm run test:coverage
-```
-
-### View Coverage Reports
-- Backend: `server/coverage/lcov-report/index.html`
-- Frontend: `client/coverage/lcov-report/index.html`
-
-## 🚀 Best Practices
-
-### Writing Tests
-1. **Test Structure**: Use describe/it blocks for organization
-2. **Test Names**: Use descriptive test names
-3. **Setup/Teardown**: Use beforeEach/afterEach for cleanup
-4. **Mocking**: Mock external dependencies
-5. **Assertions**: Use specific assertions
-
-### Test Data
-1. **Test Database**: Use separate test database
-2. **Cleanup**: Clean up test data after each test
-3. **Fixtures**: Use consistent test data
-4. **Isolation**: Ensure tests don't depend on each other
-
-### Performance
-1. **Parallel Execution**: Run tests in parallel when possible
-2. **Database Connections**: Reuse database connections
-3. **Mocking**: Mock slow operations
-4. **Timeouts**: Set appropriate timeouts
-
-## 🔍 Monitoring
-
-### Test Metrics
-- Test execution time
-- Coverage percentage
-- Test pass/fail rates
-- Code quality metrics
-
-### Alerts
-- Failed builds
-- Coverage drops
-- Performance regressions
-- Security vulnerabilities
-
-## 📚 Additional Resources
-
-- [Jest Documentation](https://jestjs.io/docs/getting-started)
-- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
-- [Supertest Documentation](https://github.com/visionmedia/supertest)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-
-## 🤝 Contributing
-
-When adding new features:
-1. Write tests first (TDD approach)
-2. Ensure all tests pass
-3. Maintain coverage thresholds
-4. Update documentation
-5. Run the full test suite before committing 
+npm test                   # Run basic tests
+npm run test:all          # Run all tests
+npm run test:watch        # Run tests in watch mode
+npm run test:coverage     # Run tests with coverage
+npm run test:ci           # Run tests for CI/CD
+``` 

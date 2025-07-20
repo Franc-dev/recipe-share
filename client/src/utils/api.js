@@ -2,28 +2,44 @@ import axios from 'axios';
 
 // Get API base URL based on environment
 const getApiUrl = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Force use the correct backend URL for production
-    const url = 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
-    console.log('🌐 API URL:', url);
-    console.log('🌐 Environment:', process.env.NODE_ENV);
+  // Development - always use localhost
+  if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+    const url = 'http://localhost:5000';
+    console.log('🌐 API URL (development):', url);
     return url;
   }
-  return 'http://localhost:5000';
+  
+  // Check for environment variable first
+  if (process.env.REACT_APP_API_URL) {
+    console.log('🌐 API URL from env:', process.env.REACT_APP_API_URL);
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // Check for Vercel environment variable
+  if (process.env.REACT_APP_BACKEND_URL) {
+    console.log('🌐 API URL from Vercel env:', process.env.REACT_APP_BACKEND_URL);
+    return process.env.REACT_APP_BACKEND_URL;
+  }
+  
+  // Production fallback
+  const url = 'https://recipe-share-franc-dev3574-ol7mikw4.leapcell.dev';
+  console.log('🌐 API URL (production):', url);
+  return url;
 };
 
-// Create axios instance with base configuration
+// Create simple axios instance - NO TIMEOUTS
 const api = axios.create({
   baseURL: getApiUrl(),
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth token
+// Simple request interceptor
 api.interceptors.request.use(
   (config) => {
+    console.log('🚀 Making request to:', config.method?.toUpperCase(), config.url);
+    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,19 +47,19 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('❌ Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor to handle errors
+// Simple response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Response received:', response.status, response.config.url);
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
+    console.error('❌ Response error:', error.message);
     return Promise.reject(error);
   }
 );

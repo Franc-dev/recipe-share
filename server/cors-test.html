@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 CORS Test for Your Backend</h1>
+        <p>This page will test CORS connectivity to your Express server running on port 5000.</p>
+        
+        <div>
+            <h3>Tests:</h3>
+            <button onclick="testBasicGet()">Test Basic GET</button>
+            <button onclick="testCorsEndpoint()">Test CORS Endpoint</button>
+            <button onclick="testPostRequest()">Test POST Request</button>
+            <button onclick="testPublicRecipes()">Test Public Recipes</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+        const resultsDiv = document.getElementById('results');
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            resultsDiv.appendChild(div);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        async function testBasicGet() {
+            addResult('Testing basic GET request...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult(`✅ Basic GET success: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                addResult(`❌ Basic GET failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCorsEndpoint() {
+            addResult('Testing CORS-specific endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/cors-test`);
+                const data = await response.json();
+                addResult(`✅ CORS test success: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                addResult(`❌ CORS test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPostRequest() {
+            addResult('Testing POST request with JSON...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        test: 'data',
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`✅ POST request success: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    addResult(`❌ POST request failed: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ POST request failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPublicRecipes() {
+            addResult('Testing public recipes endpoint...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/public/recipes`);
+                const data = await response.json();
+                addResult(`✅ Public recipes success: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                addResult(`❌ Public recipes failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run basic test when page loads
+        window.addEventListener('load', () => {
+            addResult('Page loaded. Click buttons to test CORS connectivity.', 'info');
+        });
+    </script>
+</body>
+</html>

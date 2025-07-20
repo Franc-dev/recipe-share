@@ -23,7 +23,7 @@ services:
     env: static
     buildCommand: |
       cd client && npm install
-      npm test -- --watchAll=false --passWithNoTests
+      npm run test:ci
       npm run build
     staticPublishPath: ./client/build
     envVars:

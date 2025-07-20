@@ -15,11 +15,17 @@
     "styled-components": "^5.3.9",
     "framer-motion": "^10.0.1"
   },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.4.3",
+    "jest": "^29.5.0"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "test:ci": "react-scripts test --watchAll=false --coverage --passWithNoTests",
+    "test:ci": "react-scripts test --watchAll=false --coverage --passWithNoTests --verbose",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject"
   },

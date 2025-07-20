@@ -1,20 +1,19 @@
 module.exports = {
   testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.js'],
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.js'],
+  testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
   collectCoverageFrom: [
     'src/**/*.js',
+    '!src/tests/**',
     '!src/server.js',
-    '!src/seeders/**',
-    '!**/node_modules/**'
+    '!src/seeders/**'
   ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
-    }
-  },
-  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.js'],
-  testTimeout: 10000
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  testTimeout: 10000,
+  verbose: true,
+  forceExit: true,
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true
 }; 

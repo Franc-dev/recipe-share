@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from 'react-query';
-import api from '../utils/api';
 import { FaSearch } from 'react-icons/fa';
 import RecipeCard from '../components/RecipeCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -9,38 +7,58 @@ import LoadingSpinner from '../components/LoadingSpinner';
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [featuredRecipes, setFeaturedRecipes] = useState([]);
+  const [recentRecipes, setRecentRecipes] = useState([]);
+  const [topChefs, setTopChefs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const categories = [
     'Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 
     'Beverage', 'Appetizer', 'Soup', 'Salad', 'Bread'
   ];
 
-  // Fetch featured recipes
-  const { data: featuredRecipes, isLoading: featuredLoading } = useQuery(
-    'featuredRecipes',
-    async () => {
-      const response = await api.get('/api/recipes/featured');
-      return response.data.data;
+  // Simple fetch function
+  const fetchData = async (endpoint) => {
+    try {
+      console.log(`🚀 Fetching: ${endpoint}`);
+      const response = await fetch(`http://localhost:5000${endpoint}`);
+      const data = await response.json();
+      console.log(`✅ Success: ${endpoint}`);
+      return data;
+    } catch (err) {
+      console.error(`❌ Error: ${endpoint}`, err.message);
+      throw err;
     }
-  );
+  };
 
-  // Fetch recent recipes
-  const { data: recentRecipes, isLoading: recentLoading } = useQuery(
-    'recentRecipes',
-    async () => {
-      const response = await api.get('/api/recipes?sortBy=newest&limit=8');
-      return response.data.data;
-    }
-  );
+  // Load all data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  // Fetch top chefs
-  const { data: topChefs, isLoading: chefsLoading } = useQuery(
-    'topChefs',
-    async () => {
-      const response = await api.get('/api/users/top-chefs');
-      return response.data.data;
-    }
-  );
+        // Fetch all data in parallel
+        const [featured, recent, chefs] = await Promise.all([
+          fetchData('/api/recipes/featured'),
+          fetchData('/api/recipes?sortBy=newest&limit=8'),
+          fetchData('/api/users/top-chefs')
+        ]);
+
+        setFeaturedRecipes(featured.data || []);
+        setRecentRecipes(recent.data || []);
+        setTopChefs(chefs.data || []);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -54,8 +72,25 @@ const Home = () => {
     window.location.href = `/search?category=${encodeURIComponent(category)}`;
   };
 
-  if (featuredLoading || recentLoading || chefsLoading) {
+  if (loading) {
     return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h2>
+          <p className="text-gray-600 mb-4">Unable to load recipes. Please try again later.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -207,24 +242,6 @@ const Home = () => {
               <p className="text-gray-500 text-lg">No chefs yet.</p>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="py-16 bg-orange-500 text-white">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Share Your Recipes?
-          </h2>
-          <p className="text-xl mb-8 text-orange-100">
-            Join our community of food lovers and start sharing your culinary creations today!
-          </p>
-          <Link
-            to="/register"
-            className="bg-white text-orange-500 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 inline-block"
-          >
-            Get Started
-          </Link>
         </div>
       </section>
     </div>
